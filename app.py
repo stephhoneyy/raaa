@@ -15,7 +15,7 @@ from io import BytesIO
 
 import requests
 
-from Get_a_JWT import *
+from heidi_client import *
 
 def create_pdf_bytes(text: str) -> bytes:
     buffer = BytesIO()

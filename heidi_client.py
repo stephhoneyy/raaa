@@ -14,6 +14,7 @@ Run:
 import os
 import textwrap
 import requests
+import json
 
 BASE_URL = "https://registrar.api.heidihealth.com/api/v2/ml-scribe/open-api"
 
@@ -94,6 +95,10 @@ def get_transcript(jwt_token, session_id):
 
     return resp.json()
 
+def get_transcript_text(jwt_token, session_id):
+    transcript_data = get_transcript(jwt_token, session_id)
+    transcript_text = transcript_data.get("transcript") or transcript_data.get("data")
+    return transcript_text
 
 def get_documents(jwt_token, session_id):
     """
@@ -127,6 +132,80 @@ def get_clinical_codes(jwt_token, session_id):
         return None
 
     return resp.json()
+
+def get_document_templates(jwt_token):
+    """
+    GET /templates/document-templates
+    Returns global Consult Note + Document templates.
+    """
+    headers = {"Authorization": f"Bearer {jwt_token}"}
+    url = f"{BASE_URL}/templates/document-templates"
+
+    print("\nFetching global document templates...")
+    resp = requests.get(url, headers=headers, timeout=60)
+
+    if resp.status_code != 200:
+        raise RuntimeError(
+            f"Template request failed: {resp.status_code} {resp.text}"
+        )
+
+    return resp.json()
+
+def ask_heidi(jwt_token, session_id, command_text, content=""):
+    """
+    POST /sessions/{session_id}/ask-ai
+    Streams AI output.
+    """
+    headers = {
+        "Authorization": f"Bearer {jwt_token}",
+        "Content-Type": "application/json"
+    }
+
+    url = f"{BASE_URL}/sessions/{session_id}/ask-ai"
+
+    payload = {
+        "ai_command_text": command_text,
+        "content": content,
+        "content_type": "MARKDOWN"
+    }
+
+    print("\nSending Ask Heidi request...")
+
+    resp = requests.post(url, headers=headers, json=payload, stream=True)
+
+    if resp.status_code != 200:
+        raise RuntimeError(
+            f"Ask Heidi failed: {resp.status_code} {resp.text}"
+        )
+
+    # Collect streamed chunks
+    final_output = ""
+
+    for line in resp.iter_lines():
+        if not line:
+            continue
+
+        decoded = line.decode("utf-8")
+
+        # Heidi streams as Server-Sent Events:  data: {...}
+        if decoded.startswith("data: "):
+            decoded = decoded.replace("data: ", "", 1)
+
+        try:
+            json_line = json.loads(decoded)
+            if "data" in json_line:
+                final_output += json_line["data"]
+        except json.JSONDecodeError:
+            print("Skipping malformed chunk:", decoded)
+            continue
+
+    return final_output
+
+def generate_template(jwt_token, session_id):
+    transcript = get_transcript_text(jwt_token, session_id)
+    template = ask_heidi(jwt_token, session_id, "Generate an appropriate template for the following transcript:", transcript)
+    return template
+
 
 
 def main():
@@ -190,6 +269,35 @@ def main():
             )
     else:
         print("\n(No clinical codes found or coding not enabled.)")
+
+    # 6. Fetch global templates
+    templates_data = get_document_templates(jwt_token)
+
+    templates = templates_data.get("templates", [])
+    if templates:
+        print("\n--- Available Global Templates ---")
+        for t in templates:
+            print(f"- {t['name']} (ID: {t['id']})")
+            print(f"  Category: {t.get('template_category')}")
+            print(f"  Preview: {t.get('structure_template', '')[:80]}...\n")
+    else:
+        print("\n(No global templates returned.)")
+
+    # 7. Ask Heidi to generate an email for X-ray appointment
+    email_prompt = (
+        "Summarize the following piece of text."
+    )
+
+    prompt_content = """
+
+    """
+
+    email_template = ask_heidi(jwt_token, SESSION_ID, email_prompt, prompt_content)
+
+    print("\n--- Generated Patient Email Template ---\n")
+    print(email_template)
+
+
 
     print("\n=== Done ===")
 
