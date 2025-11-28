@@ -260,9 +260,11 @@ def run_task_with_heidi(task: str, session_id: str, jwt_token: str):
 
     Returns:
         dict: {
-            "valid_actions": [list of JSON outputs from Heidi],
-            "invalid_actions": [list of invalid action dicts]
+            "valid_actions": [ [action_type, list of JSON outputs from Heidi] ],
+            "invalid_actions": list[{"action": {...}, "issues": [...]}]
         }
+
+        
     """
     # Process the task into valid and invalid actions
     from task_to_action_parsing import process_task
