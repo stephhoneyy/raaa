@@ -60,9 +60,15 @@ ACTION_PROMPTS = {
                    "Include session context. "\
                    "Return a JSON object with keys: 'specimen_type', 'test'.",
 
-    "create_prescription": "Create prescription of {medication}. "\
-                           "Consider the session context. "\
-                           "Return a JSON object with keys: 'medication', 'dose', 'instructions'.",
+    "create_prescription": (
+        "Create prescription of {medication}. "
+        "Consider the session context provided below. "
+        "Return ONLY a JSON object with keys: 'medication', 'dose', 'instructions'. "
+        "All three keys MUST be non-empty strings. "
+        "'dose' must include strength, route and frequency where possible. "
+        "'instructions' must include plain-English usage directions (e.g. with food, "
+        "time of day, cautions). "
+    ),
 
     "notify_patient": "Notify patient: {message}. "\
                       "Include session context. "\
