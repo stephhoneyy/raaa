@@ -23,7 +23,7 @@ Rules:
    - generate_pamphlet: topic (required)
    - print_document: title (required), body (optional)
    - send_to_lab: specimen_type (required), test (required)
-   - create_prescription: medication (required)
+   - create_prescription: medication (required), dose (optional), instructions (optional)
    - notify_patient: message (required)
    - write_referral_letter: to (required), purpose (required)
    - send_email: to (required), subject (required)
@@ -60,15 +60,9 @@ ACTION_PROMPTS = {
                    "Include session context. "\
                    "Return a JSON object with keys: 'specimen_type', 'test'.",
 
-    "create_prescription": (
-        "Create prescription of {medication}. "
-        "Consider the session context provided below. "
-        "Return ONLY a JSON object with keys: 'medication', 'dose', 'instructions'. "
-        "All three keys MUST be non-empty strings. "
-        "'dose' must include strength, route and frequency where possible. "
-        "'instructions' must include plain-English usage directions (e.g. with food, "
-        "time of day, cautions). "
-    ),
+    "create_prescription": "Create prescription of {medication}. "\
+                           "Consider the session context. "\
+                           "Return a JSON object with keys: 'medication', 'dose', 'instructions'.",
 
     "notify_patient": "Notify patient: {message}. "\
                       "Include session context. "\
@@ -100,7 +94,7 @@ ACTION_SCHEMA = {
     "generate_pamphlet": {"topic": True},  # required
     "print_document": {"title": True, "body": False},  # body optional
     "send_to_lab": {"specimen_type": True, "test": True},  # both required
-    "create_prescription": {"medication": True},  # only medication used in template
+    "create_prescription": {"medication": True, "dose": False, "instruction": False},  # only medication used in template
     "notify_patient": {"message": True},  # required
     "write_referral_letter": {"to": True, "purpose": True},  # template uses recipient & specialty
     "send_email": {"to": True, "subject": True},  # matches template
