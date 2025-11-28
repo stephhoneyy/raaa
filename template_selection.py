@@ -270,141 +270,82 @@ def main():
     session_data = get_session(jwt_token, SESSION_ID)
     session = session_data.get("session", session_data)
 
-    # print("\n--- Session summary ---")
-    # print(f"Session ID : {session.get('session_id')}")
-    # print(f"Name       : {session.get('session_name')}")
-    # print(f"Created at : {session.get('created_at')}")
-    # patient = session.get("patient") or {}
-    # print(f"Patient    : {patient.get('name')}  (DOB: {patient.get('dob')})")
-
-    # Try to show consult note if present
-    # consult_note = session.get("consult_note") or {}
-    # note_text = consult_note.get("result")
-    # if note_text:
-    #     print("\n--- Consult note (first 1200 chars) ---")
-    #     print(textwrap.shorten(note_text, width=1200, placeholder=" ... [truncated]"))
-    # else:
-    #     print("\n(No consult note in this session.)")
-
-    # 3. Fetch transcript
-    # transcript_data = get_transcript(jwt_token, SESSION_ID)
-    # transcript_text = transcript_data.get("transcript") or transcript_data.get("data")
-    # if transcript_text:
-    #     print("\n--- Transcript (first 600 chars) ---")
-    #     # print(transcript_text)
-    #     print(textwrap.shorten(transcript_text, width=1000, placeholder=" ... [truncated]"))
-    # else:
-    #     print("\n(No transcript text returned.)")
-
-    # 4. Fetch documents (optional)
-    # documents_data = get_documents(jwt_token, SESSION_ID)
-    # if documents_data and documents_data.get("documents"):
-    #     print("\n--- Documents ---")
-    #     for doc in documents_data["documents"]:
-    #         print(f"- Document ID   : {doc.get('id')}")
-    #         print(f"  Name          : {doc.get('name')}")
-    #         print(f"  Template ID   : {doc.get('template_id')}")
-    #         print(f"  Content       : {doc.get('content', '')[:80]}...")  # show first 80 chars
-    #         print(f"  Session ID    : {SESSION_ID}\n")
-    # else:
-    #     print("\n(No documents found.)")
-
-
-    # 5. Fetch clinical codes (optional)
-    # codes_data = get_clinical_codes(jwt_token, SESSION_ID)
-    # if codes_data and codes_data.get("clinical_entities"):
-    #     print("\n--- Clinical codes (first few) ---")
-    #     for ent in codes_data["clinical_entities"][:5]:
-    #         primary = ent.get("primary_code") or {}
-    #         print(
-    #             f"- {primary.get('code')} "
-    #             f"({primary.get('coding_system')}): "
-    #             f"{primary.get('description')}"
-    #         )
-    # else:
-    #     print("\n(No clinical codes found or coding not enabled.)")
-
-    # 6. Fetch global templates
-    # templates_data = get_document_templates(jwt_token)
-
-    # templates = templates_data.get("templates", [])
-    # if templates:
-    #     print("\n--- Available Global Templates ---")
-    #     for t in templates:
-    #         print(f"- {t['name']} (ID: {t['id']})")
-    #         print(f"  Category: {t.get('template_category')}")
-    #         print(f"  Preview: {t.get('structure_template', '')[:80]}...\n")
-    # else:
-    #     print("\n(No global templates returned.)")
-
-    # 7. Ask Heidi to generate an email for X-ray appointment
-    # email_prompt = (
-    #     "Summarize the following piece of text."
-    # )
-
-    # prompt_content = """
-
-    # """
-
-    # email_template = ask_heidi(jwt_token, SESSION_ID, email_prompt, prompt_content)
-
-    # print("\n--- Generated Patient Email Template ---\n")
-    # print(email_template)
-
-    # 8. Upload a document to the session
-    # template_id = "692200549bc42131a13f4379"  # provided template ID
-
-    # uploaded_doc = post_document(
-    #     jwt_token=jwt_token,
-    #     session_id=SESSION_ID,
-    #     template_id=template_id,
-    #     voice_style="GOLDILOCKS",   # optional, can change
-    #     brain="LEFT",               # optional, can change
-    #     content_type="MARKDOWN"     # optional, can change
-    # )
-
-    # if uploaded_doc:
-    #     print("\n--- Document Uploaded Successfully ---")
-    #     print(f"Document ID: {uploaded_doc.get('id')}")
-    #     print(f"Document URL: {uploaded_doc.get('url', 'N/A')}")
-    # else:
-    #     print("\nDocument upload failed.")
+    print("\n--- Session summary ---")
+    print(f"Session ID : {session.get('session_id')}")
+    print(f"Name       : {session.get('session_name')}")
+    print(f"Created at : {session.get('created_at')}")
+    patient = session.get("patient") or {}
+    print(f"Patient    : {patient.get('name')}  (DOB: {patient.get('dob')})")
 
 
     from task_to_action_parsing import process_task
 
-    mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
-    mock_task_2 = "Refer patient to oncology unit to discuss chemotherapy"
-    mock_task_3 = "Schedule CT scan as soon as possible"
+    # mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
+    # mock_task_2 = "Refer patient to oncology unit to discuss chemotherapy"
+    # mock_task_3 = "Schedule CT scan as soon as possible"
 
-    for task in [mock_task_1, mock_task_2, mock_task_3]:
-        print(f"\n=== Task: {task} ===")
+    # valid_instructions, invalid_actions = process_task(mock_task_2)
+    # print("VALID INSTRUCTIONS")
+    # print(valid_instructions)
+    # print("INVALID ACTIONS")
+    # print(invalid_actions)
 
-        valid_actions, invalid_actions = process_task(task)
+    # for task in [mock_task_2]:
+    #     print(f"\n=== Task: {task} ===")
 
-        print("\nVALID ACTIONS:")
-        for action_instruction in valid_actions:
-            print("-", action_instruction)
+    #     valid_actions, invalid_actions = process_task(task)
 
-            # --- NEW: Directly use action_instruction as the command_text ---
-            template_output = ask_heidi(
+    #     print("\nVALID ACTIONS:")
+    #     for action in valid_actions:
+    #         print("-", action)
+
+    #         action_prompt = action[1]
+
+    #         # --- NEW: Directly use action_instruction as the command_text ---
+    #         prompt_output = ask_heidi(
+    #             jwt_token,
+    #             SESSION_ID,
+    #             command_text=action_prompt,
+    #             content=""           # empty content
+    #         )
+
+    #         print("\n--- Heidi Output ---")
+    #         print(prompt_output)
+    #         print("--------------------------------------------------")
+
+    #     print("\nINVALID ACTIONS:")
+    #     for entry in invalid_actions:
+    #         print("-", entry)
+
+    # mock_action1 = ('write_referral_letter', 'Write referral letter to oncology unit for to discuss chemotherapy.')
+    # mock_action2 = ('send_email', "Send email to oncology unit on the subject of Patient Referral and body. Return the output as a json with the exact keys subject_line and body. And have the body be formatted nicely for when it is converted into a pdf" )
+    mock_action2 = (
+        "send_email",
+        "Send email to oncology unit considering the subject Patient Referral. Consider the session context. "
+        "Return a JSON object with keys: 'subject_line', 'body'. "
+        # "Format the body nicely so it can be converted into a PDF."
+    )
+    # mock_action3 = ('generate_document', "Generate document titled 'Patient Referral' with content: Please refer the "'patient to discuss chemotherapy')
+    # mock_action4 = ('notify_patient','Notify patient: You have been referred to the oncology unit to discuss your ''chemotherapy.')
+
+    action_instruction = mock_action2[1]
+
+    template_output = ask_heidi(
                 jwt_token,
                 SESSION_ID,
                 command_text=action_instruction,
                 content=""           # empty content
             )
 
-            print("\n--- Heidi Output ---")
-            print(template_output)
-            print("--------------------------------------------------")
-
-        print("\nINVALID ACTIONS:")
-        for entry in invalid_actions:
-            print("-", entry)
-
+    print("\n--- Heidi Output ---")
+    print(template_output)
 
     print("\n=== Done ===")
 
 
 if __name__ == "__main__":
     main()
+
+## TODO: Work on the prompting of task to action to be less redundant.
+## TODO: MAYBE, I have to modify the final output action string to hold more parameters. (Low prio)
+## TODO: There seems to be some bug calling the script multiple times.

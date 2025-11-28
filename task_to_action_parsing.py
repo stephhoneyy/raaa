@@ -26,7 +26,7 @@ Rules:
    - create_prescription: medication (required)
    - notify_patient: message (required)
    - write_referral_letter: to (required), purpose (required)
-   - send_email: to (required), subject (required), body (required)
+   - send_email: to (required), subject (required)
    - book_appointment: clinic (optional), date (required), reason (optional)
    - order_test: test_name (required)
    - generate_document: title (required), content (required)
@@ -47,18 +47,48 @@ IMPORTANT:
 Task: "{task}"
 """
 
-ACTION_TEMPLATES = {
-    "generate_pamphlet": "Generate a patient pamphlet on {topic}.",
-    "print_document": "Print document titled '{title}'{body}.",
-    "send_to_lab": "Send {specimen_type} to lab for {test}.",
-    "create_prescription": "Create prescription of {medication}",
-    "notify_patient": "Notify patient: {message}",
-    "write_referral_letter": "Write referral letter to {to} for {purpose}.",
-    "send_email": "Send email to {to} with subject '{subject}' and body: {body}",
-    "book_appointment": "Book appointment with {clinic}, {date} for {reason}.",
-    "order_test": "Order test '{test_name}'",
-    "generate_document": "Generate document titled '{title}' with content: {content}"
+ACTION_PROMPTS = {
+    "generate_pamphlet": "Generate a patient pamphlet on {topic}. "\
+                         "The output should consider the context of the session it is being generated for. "\
+                         "Return a JSON object with the key: 'content'.",
+
+    "print_document": "Print document titled {title}{body}. "\
+                      "Consider the session context. "\
+                      "Return a JSON object with keys: 'title', 'body'.",
+
+    "send_to_lab": "Send {specimen_type} to lab for {test}. "\
+                   "Include session context. "\
+                   "Return a JSON object with keys: 'specimen_type', 'test'.",
+
+    "create_prescription": "Create prescription of {medication}. "\
+                           "Consider the session context. "\
+                           "Return a JSON object with keys: 'medication', 'dose', 'instructions'.",
+
+    "notify_patient": "Notify patient: {message}. "\
+                      "Include session context. "\
+                      "Return a JSON object with key: 'message'.",
+
+    "write_referral_letter": "Write referral letter to {to} for {purpose}. "\
+                             "Consider the session context. "\
+                             "Return a JSON object with keys: 'recipient', 'purpose', 'notes'.",
+
+    "send_email": "Send email to {to} considering the subject of {subject}. "\
+                  "Consider session context. "\
+                  "Return a JSON object with keys: 'subject_line', 'body'.",
+
+    "book_appointment": "Book appointment with {clinic}, {date} for {reason}. "\
+                        "Consider session context. "\
+                        "Return a JSON object with keys: 'clinic', 'date', 'reason'.",
+
+    "order_test": "Order test {test_name}. "\
+                  "Include session context. "\
+                  "Return a JSON object with keys: 'test_name', 'patient_id'.",
+
+    "generate_document": "Generate document titled {title} with content: {content}. "\
+                         "Consider session context. "\
+                         "Return a JSON object with keys: 'title', 'content'."
 }
+
 
 ACTION_SCHEMA = {
     "generate_pamphlet": {"topic": True},  # required
@@ -67,7 +97,7 @@ ACTION_SCHEMA = {
     "create_prescription": {"medication": True},  # only medication used in template
     "notify_patient": {"message": True},  # required
     "write_referral_letter": {"to": True, "purpose": True},  # template uses recipient & specialty
-    "send_email": {"to": True, "subject": True, "body": True},  # matches template
+    "send_email": {"to": True, "subject": True},  # matches template
     "book_appointment": {"clinic": True, "date": True, "reason": False},  # template uses clinic, date, reason
     "order_test": {"test_name": True},  # template uses test_name only
     "generate_document": {"title": True, "content": True}  # matches template
@@ -104,7 +134,7 @@ def decompose_task(task):
 def render_action(action):
     """
     Returns:
-    - rendered instruction if action is valid (exists in ACTION_TEMPLATES and all required args are present)
+    - rendered instruction if action is valid (exists in ACTION_PROMPTS and all required args are present)
     - None if invalid
     Also returns list of missing required args or reason for invalidity.
     """
@@ -112,10 +142,10 @@ def render_action(action):
     args = action.get("args", {})
 
     # Check if action type is recognized
-    if action_name not in ACTION_TEMPLATES:
+    if action_name not in ACTION_PROMPTS:
         return None, ["invalid_action_type"]
 
-    template = ACTION_TEMPLATES[action_name]
+    template = ACTION_PROMPTS[action_name]
 
     filled_args = {}
     missing_args = []
@@ -173,13 +203,12 @@ def render_action(action):
 #     print(f"- Action: {action_name}, Issues: {entry['issues']}")
 
 
-
 def process_task(task: str):
     """
     Takes a task string, runs LLM decomposition, renders actions,
     and returns (valid_instructions, invalid_actions).
 
-    valid_instructions: list[str]
+    valid_instructions: list[(action_dict, instruction_str)]
     invalid_actions: list[{"action": {...}, "issues": [...]}]
     """
 
@@ -192,11 +221,14 @@ def process_task(task: str):
         instr, missing = render_action(a)
         if missing:
             invalid_actions.append({
-                "action": a,
+                "action": a.get('action', "ERROR"),
                 "issues": missing
             })
         else:
-            valid_instructions.append(instr)
+            # Store both the original action AND the instruction
+            valid_instructions.append((a.get('action', "ERROR"), instr))
 
     return valid_instructions, invalid_actions
 
+
+    
