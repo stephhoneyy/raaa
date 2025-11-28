@@ -254,6 +254,42 @@ def generate_template(jwt_token, session_id):
     template = ask_heidi(jwt_token, session_id, "Generate an appropriate template for the following transcript to be attached to an email:", transcript)
     return template
 
+def run_task_with_heidi(task: str, session_id: str, jwt_token: str):
+    """
+    Process a task, run valid actions through ask_heidi, and collect results.
+
+    Returns:
+        dict: {
+            "valid_actions": [list of JSON outputs from Heidi],
+            "invalid_actions": [list of invalid action dicts]
+        }
+    """
+    # Process the task into valid and invalid actions
+    from task_to_action_parsing import process_task
+    valid_instructions, invalid_actions = process_task(task)
+
+    heidi_outputs = []
+
+    for action in valid_instructions:
+        action_name = action[0]
+        action_prompt = action[1]
+        print("Name ", action_name, "Prompt ", action_prompt)
+        # Run the action instruction through ask_heidi
+        output_json = ask_heidi(
+            jwt_token,
+            session_id,
+            command_text=action_prompt,
+            content=""  # empty content
+        )
+        print("OUTPUT")
+        print(output_json)
+        heidi_outputs.append([action_name, output_json])
+
+    return {
+        "valid_actions": heidi_outputs,
+        "invalid_actions": invalid_actions
+    }
+
 
 
 def main():
@@ -278,70 +314,19 @@ def main():
     print(f"Patient    : {patient.get('name')}  (DOB: {patient.get('dob')})")
 
 
-    from task_to_action_parsing import process_task
+    
 
-    # mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
-    # mock_task_2 = "Refer patient to oncology unit to discuss chemotherapy"
-    # mock_task_3 = "Schedule CT scan as soon as possible"
+    mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
+    mock_task_2 = "Refer patient to oncology unit to discuss chemotherapy"
+    mock_task_3 = "Schedule CT scan as soon as possible"
 
-    # valid_instructions, invalid_actions = process_task(mock_task_2)
-    # print("VALID INSTRUCTIONS")
-    # print(valid_instructions)
-    # print("INVALID ACTIONS")
-    # print(invalid_actions)
+    from pprint import pprint
 
-    # for task in [mock_task_2]:
-    #     print(f"\n=== Task: {task} ===")
-
-    #     valid_actions, invalid_actions = process_task(task)
-
-    #     print("\nVALID ACTIONS:")
-    #     for action in valid_actions:
-    #         print("-", action)
-
-    #         action_prompt = action[1]
-
-    #         # --- NEW: Directly use action_instruction as the command_text ---
-    #         prompt_output = ask_heidi(
-    #             jwt_token,
-    #             SESSION_ID,
-    #             command_text=action_prompt,
-    #             content=""           # empty content
-    #         )
-
-    #         print("\n--- Heidi Output ---")
-    #         print(prompt_output)
-    #         print("--------------------------------------------------")
-
-    #     print("\nINVALID ACTIONS:")
-    #     for entry in invalid_actions:
-    #         print("-", entry)
-
-    # mock_action1 = ('write_referral_letter', 'Write referral letter to oncology unit for to discuss chemotherapy.')
-    # mock_action2 = ('send_email', "Send email to oncology unit on the subject of Patient Referral and body. Return the output as a json with the exact keys subject_line and body. And have the body be formatted nicely for when it is converted into a pdf" )
-    mock_action2 = (
-        "send_email",
-        "Send email to oncology unit considering the subject Patient Referral. Consider the session context. "
-        "Return a JSON object with keys: 'subject_line', 'body'. "
-        # "Format the body nicely so it can be converted into a PDF."
-    )
-    # mock_action3 = ('generate_document', "Generate document titled 'Patient Referral' with content: Please refer the "'patient to discuss chemotherapy')
-    # mock_action4 = ('notify_patient','Notify patient: You have been referred to the oncology unit to discuss your ''chemotherapy.')
-
-    action_instruction = mock_action2[1]
-
-    template_output = ask_heidi(
-                jwt_token,
-                SESSION_ID,
-                command_text=action_instruction,
-                content=""           # empty content
-            )
-
-    print("\n--- Heidi Output ---")
-    print(template_output)
-
-    print("\n=== Done ===")
-
+    data = run_task_with_heidi(mock_task_2, SESSION_ID, jwt_token)
+    print("VALID")
+    pprint(data.get("valid_actions"))
+    print("INVALID")
+    pprint(data.get("invalid_actions"))
 
 if __name__ == "__main__":
     main()
