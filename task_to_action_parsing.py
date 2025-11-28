@@ -12,20 +12,6 @@ def ask_llm(prompt):
     )
     return chat.choices[0].message.content
 
-ACTION_SCHEMA = {
-    "generate_pamphlet": {"topic": True},  # required
-    "print_document": {"title": True, "body": False},  # body optional
-    "send_to_lab": {"specimen_type": True, "test": True},  # both required
-    "create_prescription": {"medication": True},  # only medication used in template
-    "notify_patient": {"message": True},  # required
-    "write_referral_letter": {"to": True, "purpose": True},  # template uses recipient & specialty
-    "send_email": {"to": True, "subject": True, "body": True},  # matches template
-    "book_appointment": {"clinic": True, "date": True, "reason": False},  # template uses clinic, date, reason
-    "order_test": {"test_name": True},  # template uses test_name only
-    "generate_document": {"title": True, "content": True}  # matches template
-}
-
-
 
 DECOMPOSE_PROMPT_TEMPLATE = """
 You are a task planner. Convert the following clinical task
@@ -61,9 +47,6 @@ IMPORTANT:
 Task: "{task}"
 """
 
-
-
-
 ACTION_TEMPLATES = {
     "generate_pamphlet": "Generate a patient pamphlet on {topic}.",
     "print_document": "Print document titled '{title}'{body}.",
@@ -75,6 +58,19 @@ ACTION_TEMPLATES = {
     "book_appointment": "Book appointment with {clinic}, {date} for {reason}.",
     "order_test": "Order test '{test_name}'",
     "generate_document": "Generate document titled '{title}' with content: {content}"
+}
+
+ACTION_SCHEMA = {
+    "generate_pamphlet": {"topic": True},  # required
+    "print_document": {"title": True, "body": False},  # body optional
+    "send_to_lab": {"specimen_type": True, "test": True},  # both required
+    "create_prescription": {"medication": True},  # only medication used in template
+    "notify_patient": {"message": True},  # required
+    "write_referral_letter": {"to": True, "purpose": True},  # template uses recipient & specialty
+    "send_email": {"to": True, "subject": True, "body": True},  # matches template
+    "book_appointment": {"clinic": True, "date": True, "reason": False},  # template uses clinic, date, reason
+    "order_test": {"test_name": True},  # template uses test_name only
+    "generate_document": {"title": True, "content": True}  # matches template
 }
 
 
