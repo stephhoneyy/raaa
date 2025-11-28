@@ -93,12 +93,12 @@ def decompose_task(task):
         action_types=", ".join(ACTION_SCHEMA.keys()),
         task=task
     )
-    print("Sending to llm prompt:")
-    print(prompt)
+    # print("Sending to llm prompt:")
+    # print(prompt)
     raw = ask_llm(prompt)
     json_text = extract_json_array(raw)  # <-- safely extract
-    print("Resulting json actions")
-    print(json_text)
+    # print("Resulting json actions")
+    # print(json_text)
     return json.loads(json_text)
 
 def render_action(action):
@@ -144,33 +144,59 @@ def render_action(action):
 
 # ------------------------------
 
-task = "Write referral letter to Melvin Associates for endocrinology appointment"
+# task = "Write referral letter to Melvin Associates for endocrinology appointment"
 
-actions = decompose_task(task)  # Uses LLM
+# actions = decompose_task(task)  # Uses LLM
 
-valid_instructions = []
-invalid_actions = []
+# valid_instructions = []
+# invalid_actions = []
 
-for a in actions:
-    instr, missing = render_action(a)
-    if missing:
-        invalid_actions.append({
-            "action": a,
-            "issues": missing  # can be missing args or "invalid_action_type"
-        })
-    else:
-        valid_instructions.append(instr)
+# for a in actions:
+#     instr, missing = render_action(a)
+#     if missing:
+#         invalid_actions.append({
+#             "action": a,
+#             "issues": missing  # can be missing args or "invalid_action_type"
+#         })
+#     else:
+#         valid_instructions.append(instr)
 
-# Print valid instructions
-print("VALID ACTIONS:")
-for instr in valid_instructions:
-    print("-", instr)
+# # Print valid instructions
+# print("VALID ACTIONS:")
+# for instr in valid_instructions:
+#     print("-", instr)
 
-# Print invalid actions
-print("\nINVALID ACTIONS:")
-for entry in invalid_actions:
-    action_name = entry["action"].get("action", "<missing>")
-    print(f"- Action: {action_name}, Issues: {entry['issues']}")
+# # Print invalid actions
+# print("\nINVALID ACTIONS:")
+# for entry in invalid_actions:
+#     action_name = entry["action"].get("action", "<missing>")
+#     print(f"- Action: {action_name}, Issues: {entry['issues']}")
 
 
+
+def process_task(task: str):
+    """
+    Takes a task string, runs LLM decomposition, renders actions,
+    and returns (valid_instructions, invalid_actions).
+
+    valid_instructions: list[str]
+    invalid_actions: list[{"action": {...}, "issues": [...]}]
+    """
+
+    actions = decompose_task(task)  # Uses LLM
+
+    valid_instructions = []
+    invalid_actions = []
+
+    for a in actions:
+        instr, missing = render_action(a)
+        if missing:
+            invalid_actions.append({
+                "action": a,
+                "issues": missing
+            })
+        else:
+            valid_instructions.append(instr)
+
+    return valid_instructions, invalid_actions
 
