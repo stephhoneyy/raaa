@@ -203,7 +203,7 @@ def ask_heidi(jwt_token, session_id, command_text, content=""):
 
 def generate_template(jwt_token, session_id):
     transcript = get_transcript_text(jwt_token, session_id)
-    template = ask_heidi(jwt_token, session_id, "Generate an appropriate template for the following transcript:", transcript)
+    template = ask_heidi(jwt_token, session_id, "Generate an appropriate template for the following transcript to be attached to an email:", transcript)
     return template
 
 
