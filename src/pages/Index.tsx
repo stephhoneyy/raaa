@@ -47,7 +47,7 @@ interface Patient {
 // MOCK DATA CONFIGURATION
 // ============================================================================
 // Set USE_MOCK_DATA to false when you want to connect to your real backend
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // Mock patient data - replace with your real API response
 const MOCK_PATIENT: Patient = {
@@ -449,7 +449,7 @@ export default function Tasks() {
       } else {
         // CONNECT YOUR BACKEND HERE:
         // Replace the URL with your actual backend endpoint
-        const response = await fetch("http://localhost:5000/api/patient", {
+        const response = await fetch("http://localhost:8000/api/patient", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -492,7 +492,7 @@ export default function Tasks() {
       } else {
         // CONNECT YOUR BACKEND HERE:
         // Replace the URL with your actual backend endpoint
-        const response = await fetch("http://localhost:5000/api/tasks", {
+        const response = await fetch("http://localhost:8000/api/tasks", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -555,7 +555,7 @@ export default function Tasks() {
         // CONNECT YOUR BACKEND HERE:
         // Replace the URL with your actual backend endpoint
         // This endpoint should generate content based on the task type
-        const response = await fetch("http://localhost:5000/api/tasks/generate", {
+        const response = await fetch("http://localhost:8000/api/tasks/generate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -666,7 +666,7 @@ export default function Tasks() {
           content: genTask.editedContent || genTask.content.content,
         }));
 
-        const response = await fetch("http://localhost:5000/api/tasks/execute-batch", {
+        const response = await fetch("http://localhost:8000/api/tasks/execute-batch", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

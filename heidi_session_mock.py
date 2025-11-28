@@ -269,6 +269,57 @@ def get_clinical_codes(jwt_token, session_id):
 
     return resp.json()
 
+def get_location_and_specialties_for_session(
+    session_id: str | None = None,
+) -> dict:
+    """
+    High-level helper that:
+    - fetches session + patient + transcript
+    - extracts suburb/postcode
+    - infers specialties from consult note + transcript
+
+    Returns a dict like:
+    {
+      "location": { "suburb": ..., "postcode": ..., "raw_text": ... } or None,
+      "specialties": ["cardiology", "psychiatry", ...],
+    }
+    """
+    # Use provided session_id or fall back to global constant
+    sid = session_id or SESSION_ID
+
+    # 1. Get JWT
+    jwt_token = get_jwt_token()
+
+    # 2. Fetch session
+    session_data = get_session(jwt_token, sid)
+    session = session_data.get("session", session_data)
+
+    # 3. Patient + location
+    raw_patient = session.get("patient") or {}
+    patient = apply_mock_address_if_missing(raw_patient)
+    loc_info = extract_location_from_patient(patient)
+
+    # 4. Consult note + transcript text
+    consult_note = session.get("consult_note") or {}
+    note_text = consult_note.get("result") or ""
+
+    transcript_data = get_transcript(jwt_token, sid)
+    transcript_text = (
+        transcript_data.get("transcript")
+        or transcript_data.get("data")
+        or ""
+    )
+
+    combined_text = f"{note_text} {transcript_text}"
+    specialties = suggest_specialties_from_text(combined_text, max_specialties=3)
+
+    return {
+        "location": loc_info,        # might be None
+        "specialties": specialties,  # list[str]
+        "patient": patient,          # optional, handy if you want it
+        "session_id": sid,
+    }
+
 
 def main():
     print("=== Heidi Session Extract ===")
