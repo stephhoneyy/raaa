@@ -3,9 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Any, Union
 
+import json
+
 # Import your logic here
 from extract_from_sesh import extract_from_session
 from doctor_finder import find_nearby_doctors
+from template_selection import run_task_with_heidi, get_jwt_token, SESSION_ID
+
 
 app = FastAPI()
 
@@ -17,6 +21,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+ACTION_TO_TASK_TYPE = {
+    "generate_pamphlet": "documentation",
+    "print_document": "store",
+    "send_to_lab": "order",
+    "create_prescription": "order",
+    "notify_patient": "reminder",
+    "write_referral_letter": "referrals",
+    "send_email": "send",
+    "book_appointment": "book",
+    "order_test": "order",
+    "generate_document": "documentation",
+}
 
 # -----------------------------
 # Pydantic Models (match frontend)
@@ -56,30 +73,50 @@ def get_patient():
         "id": "patient-001",
         "name": "John Doe",
         "dateOfBirth": "1980-03-15",
-        "sessionId": "SESSION-1234",
+        "sessionId": SESSION_ID,
     }
 
 
 @app.get("/api/tasks")
+def human_title(action_name: str) -> str:
+    return action_name.replace("_", " ").title()
+
 def get_tasks():
     """
-    TODO:
-    Replace with your real tasks extracted from Heidi transcript / logic.
+    Build the task list from Heidi + LLM pipeline.
+    We only use valid_actions from run_task_with_heidi().
     """
-    return [
-        {
-            "id": "task-1",
-            "title": "Create session note",
-            "type": "documentation",
-            "description": "Generate a session note from transcript."
-        },
-        {
-            "id": "task-2",
-            "title": "Refer to specialist",
-            "type": "referrals",
-            "description": "Find a specialist based on condition."
-        }
-    ]
+    # 1) Get a JWT for Heidi
+    jwt_token = get_jwt_token()
+
+    # 2) Define the high-level task you want to decompose.
+    #    For a demo, you can hardcode or later derive from transcript.
+    high_level_task = "Generate follow-up actions for this consultation"
+
+    data = run_task_with_heidi(high_level_task, SESSION_ID, jwt_token)
+
+    valid_actions = data.get("valid_actions", [])
+
+    tasks = []
+
+    for idx, (action_name, output_json_str) in enumerate(valid_actions, start=1):
+        task_type = ACTION_TO_TASK_TYPE.get(action_name, "documentation")
+
+        # Optionally, parse the Heidi JSON for a nicer description
+        try:
+            parsed = json.loads(output_json_str)
+            desc = parsed.get("description") or parsed.get("content") or output_json_str[:140]
+        except Exception:
+            desc = output_json_str[:140]
+
+        tasks.append({
+            "id": f"task-{idx}",
+            "title": human_title(action_name),   # e.g. "Write Referral Letter"
+            "type": task_type,                  # must be one of your TaskType strings
+            "description": desc,
+        })
+
+    return tasks
 
 
 @app.post("/api/tasks/generate")
