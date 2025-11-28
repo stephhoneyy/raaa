@@ -93,6 +93,12 @@ def generate_task_content(req: GenerateRequest):
             "type": "Session Note",
             "content": f"Generated session note for: {req.taskDetails['title']}"
         }
+    
+    if req.taskType == "email":
+        return {
+            "type": "Email",
+            "content": f"Generated email for: {req.taskDetails['title']}"
+        }
 
     if req.taskType == "referrals":
         specialty, postcode = extract_from_session()  # you already have this!
