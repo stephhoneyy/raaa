@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from typing import List, Any, Union
 
 # Import your logic here
-# from heidi_session_mock import get_location_and_specialties_for_session
-# from doctor_finder import find_nearby_doctors
+from extract_from_sesh import extract_from_session
+from doctor_finder import find_nearby_doctors
 
 app = FastAPI()
 
@@ -95,18 +95,8 @@ def generate_task_content(req: GenerateRequest):
         }
 
     if req.taskType == "referrals":
-        # Example: use Heidi + doctor finder
-        specialty = "physiotherapy"  # get from session logic
-        postcode = "3121"            # get from session logic
-
-        doctors = [
-            {
-                "title": "Richmond Physio Clinic",
-                "description": "Sports injury and rehab specialists",
-                "link": "https://example.com"
-            }
-        ]
-
+        specialty, postcode = extract_from_session()  # you already have this!
+        doctors = find_nearby_doctors(specialty, postcode)
         return {
             "type": "Nearby Specialists",
             "content": doctors

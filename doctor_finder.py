@@ -87,34 +87,19 @@ MOCK_DOCTOR_DIRECTORY = [
 def find_nearby_doctors(specialty: str, postcode: str):
     specialty = specialty.lower()
 
-    # Find exact matches first
-    results = [
-        clinic for clinic in MOCK_DOCTOR_DIRECTORY
-        if clinic["specialty"] == specialty
+    matches = [
+        {
+            "title": item["title"],
+            "description": f"{item['description']} (Located in {item['suburb']})",
+            "link": item["link"]
+        }
+        for item in MOCK_DOCTOR_DIRECTORY if specialty in item["specialty"]
     ]
 
-    # Optional: filter again by postcode proximity (simple string compare)
-    if postcode:
-        filtered_by_postcode = [
-            c for c in results if c["postcode"] == postcode
-        ]
-        if filtered_by_postcode:
-            results = filtered_by_postcode
-
-    # Fallback generic
-    if not results:
-        return [{
-            "title": f"{specialty.title()} Clinic near {postcode}",
-            "description": f"No exact matches found — showing nearest available {specialty} clinic.",
-            "link": "https://example.com/nearby-specialist"
-        }]
-
-    # Convert to frontend shape
-    return [
+    return matches[:3] if matches else [
         {
-            "title": clinic["title"],
-            "description": f"{clinic['description']} Located in {clinic['suburb']} ({clinic['postcode']}).",
-            "link": clinic["link"]
+            "title": "General Practice Clinic",
+            "description": f"No exact match for {specialty}. Showing nearest GP options.",
+            "link": "https://example.com/gp"
         }
-        for clinic in results
     ]
