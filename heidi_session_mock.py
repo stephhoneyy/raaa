@@ -45,32 +45,135 @@ MOCK_PATIENT_ADDRESS = {
     "country": "Australia",
 }
 
-# ---- SPECIALTY KEYWORDS FOR SIMPLE MAPPING ----
-SPECIALTY_KEYWORDS = {
-    "infectious diseases": [
-        "antiretroviral", "hiv", "abacavir", "tenofovir", "dolutegravir"
-    ],
-    "oncology": [
-        "chemotherapy", "chemotherapeutic", "abemaciclib", "tumour", "tumor", "cancer"
-    ],
-    "cardiology": [
-        "cardiovascular", "heart failure", "beta-blocker", "ace inhibitor",
-        "hypertension", "atrial fibrillation", "angina"
-    ],
-    "psychiatry": [
-        "antidepressant", "antipsychotic", "mood stabiliser", "mood stabilizer",
-        "bipolar", "anxiety", "depression", "benzodiazepine", "alprazolam"
-    ],
-    "clinical pharmacology / medication review": [
-        "polypharmacy", "medication review", "medication reconciliation",
-        "deprescribing"
-    ],
-    "endocrinology / bone health": [
-        "osteoporosis", "fracture risk", "bisphosphonate", "alendronate",
-        "denosumab"
-    ],
+# ---- SPECIALTY INFERENCE FROM CLINICAL CODES ----
+# Example ICD-10-based mapping. You can expand / tweak over time.
+
+ICD10_EXACT_SPECIALTY = {
+    "Z51": "oncology",                          # chemo / radiotherapy sessions
+    "Z79": "clinical pharmacology / medication review",  # long-term drug therapy
+    "Z00": "general practice / general medicine",        # general medical examination
+    "Z92": "clinical pharmacology / medication review",  # personal history of medical treatment
 }
 
+ICD10_RANGE_SPECIALTY = [
+    (("C00", "D48"), "oncology / haematology"),          # neoplasms
+    (("E10", "E14"), "endocrinology (diabetes)"),
+    (("E20", "E35"), "endocrinology"),
+    (("F00", "F99"), "psychiatry"),                      # mental / behavioural
+    (("G00", "G99"), "neurology"),
+    (("I00", "I99"), "cardiology"),                      # circulatory
+    (("M05", "M14"), "rheumatology"),                    # inflammatory polyarthropathies
+    (("M80", "M81"), "endocrinology / bone health"),     # osteoporosis
+    (("N00", "N19"), "nephrology"),                      # kidney
+    (("N20", "N39"), "urology"),
+    # Z00-Z13: general exams / screening -> GP / general med
+    (("Z00", "Z13"), "general practice / general medicine"),
+    # Z80-Z99: personal/family history, long-term care -> chronic/general
+    (("Z80", "Z99"), "general medicine / chronic disease"),
+]
+
+# ---- ORG-SPECIFIC / NUMERIC CODE MAPPING ----
+# These are *example* mappings for your current numeric codes.
+# Replace these specialties with the correct ones once you know what
+# 96027-00 and 900 actually represent in your coding system.
+NUMERIC_CODE_SPECIALTY = {
+    "96027-00": "-",
+    "900": "-",
+}
+
+def achi_specialties_for_code(code: str) -> list[str]:
+    """
+    Map numeric/local procedure codes to specialties.
+    This is org-specific; currently only maps a couple of known examples.
+    """
+    code_norm = code.strip().upper()
+    spec = NUMERIC_CODE_SPECIALTY.get(code_norm)
+    return [spec] if spec else []
+
+def _clean_icd10_prefix(code: str) -> str:
+    """
+    Normalise an ICD-10 / ICD-10-CM code to a 3-character prefix for range matching.
+
+    Examples:
+      "I50.0"  -> "I50"
+      "Z00.8"  -> "Z00"
+      "M80.00" -> "M80"
+    """
+    if not code:
+        return ""
+    c = code.strip().upper().replace(" ", "")
+    # Remove dot for consistency
+    c = c.replace(".", "")
+    # Use first 3 characters for prefix
+    return c[:3]
+
+
+def icd10_specialties_for_code(code: str) -> list[str]:
+    """
+    Map a single ICD-10/ICD-10-CM-like code to one or more specialties.
+    """
+    prefix = _clean_icd10_prefix(code)
+    if not prefix:
+        return []
+
+    # 1) Exact-prefix overrides
+    if prefix in ICD10_EXACT_SPECIALTY:
+        return [ICD10_EXACT_SPECIALTY[prefix]]
+
+    # 2) Range-based mapping
+    specs = set()
+    for (start, end), spec in ICD10_RANGE_SPECIALTY:
+        if start <= prefix <= end:
+            specs.add(spec)
+
+    return list(specs)
+
+
+def specialties_from_codes(clinical_entities: list[dict]) -> list[str]:
+    """
+    Infer specialties from Heidi clinical codes.
+
+    Uses:
+      - ICD-10 / ICD-10-CM-like prefixes when either:
+          * coding_system explicitly looks like ICD-10 / ICD-10-CM, OR
+          * coding_system is missing/None but the code starts with a letter.
+      - A simple org-specific mapping for numeric/local codes (e.g. ACHI-style)
+        when coding_system is missing/None and the code starts with a digit.
+    """
+    scores = Counter()
+
+    for ent in clinical_entities:
+        primary = ent.get("primary_code") or {}
+        system = (primary.get("coding_system") or "").upper()
+        code = (primary.get("code") or "").upper().strip()
+        if not code:
+            continue  # only skip if there's no code at all
+
+        specs_for_code: list[str] = []
+
+        # Explicit ICD-10-ish systems
+        if system in ("ICD-10", "ICD10", "ICD-10-CM", "ICD10-CM", "ICD10CM"):
+            specs_for_code = icd10_specialties_for_code(code)
+
+        # No/unknown system, but code looks like ICD-10 (starts with a letter)
+        elif not system and code[0].isalpha():
+            specs_for_code = icd10_specialties_for_code(code)
+
+        # No/unknown system, and code is numeric/local -> treat as procedure code
+        elif not system and code[0].isdigit():
+            specs_for_code = achi_specialties_for_code(code)
+
+        # else:
+        #     print("    [DEBUG] no mapping logic for this system/code shape yet")
+
+        for spec in specs_for_code:
+            scores[spec] += 1
+
+    if not scores:
+        return []
+
+    # Return specialties ordered by how many codes pointed at them
+    return [s for s, _ in scores.most_common()]
 
 # ---- HELPERS FOR LOCATION & SPECIALTIES ----
 
@@ -350,17 +453,6 @@ def main():
     else:
         print("\n(No transcript text returned.)")
 
-    # 3b. Use consult note + transcript to suggest specialties
-    combined_text = (note_text or "") + " " + (transcript_text or "")
-    specialties = suggest_specialties_from_text(combined_text, max_specialties=3)
-
-    print("\n--- Suggested specialties from consult note + transcript ---")
-    if specialties:
-        for s in specialties:
-            print(" -", s)
-    else:
-        print(" No specialty keywords detected in text.")
-
     # 4. Fetch documents (optional)
     documents_data = get_documents(jwt_token, SESSION_ID)
     if documents_data and documents_data.get("documents"):
@@ -372,9 +464,13 @@ def main():
 
     # 5. Fetch clinical codes (optional)
     codes_data = get_clinical_codes(jwt_token, SESSION_ID)
+    clinical_entities = []
     if codes_data and codes_data.get("clinical_entities"):
-        print("\n--- Clinical codes (first few) ---")
-        for ent in codes_data["clinical_entities"][:5]:
+        clinical_entities = codes_data["clinical_entities"]
+
+        print("\n--- Clinical codes ---")
+        # for ent in clinical_entities[:5]:
+        for ent in clinical_entities:
             primary = ent.get("primary_code") or {}
             print(
                 f"- {primary.get('code')} "
@@ -384,7 +480,15 @@ def main():
     else:
         print("\n(No clinical codes found or coding not enabled.)")
 
-    print("\n=== Done ===")
+    # 5b. Infer specialties from codes
+    print("\n--- Suggested specialties inferred from clinical codes ---")
+    specialties_from_code = specialties_from_codes(clinical_entities)
+    if specialties_from_code:
+        for s in specialties_from_code:
+            print(" -", s)
+    else:
+        print(" No specialties could be inferred from the available codes.")
+
 
 
 if __name__ == "__main__":
