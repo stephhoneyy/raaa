@@ -1,13 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Any, Union
+from typing import List, Any, Optional
 import json
 
-# Your imports
 from extract_from_sesh import extract_from_session
 from doctor_finder import find_nearby_doctors
-from template_selection import run_task_with_heidi, get_jwt_token, SESSION_ID
+from template_selection import get_actions_from_task, get_data_of_action, get_jwt_token, SESSION_ID
 
 
 app = FastAPI()
@@ -20,149 +19,127 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -----------------------------
-# Task type mapping
-# -----------------------------
-ACTION_TO_TASK_TYPE = {
-    "generate_pamphlet": "documentation",
-    "print_document": "store",
-    "send_to_lab": "order",
-    "create_prescription": "order",
-    "notify_patient": "reminder",
-    "write_referral_letter": "referrals",
-    "send_email": "email",        # so /api/tasks/generate hits your email branch
-    "book_appointment": "book",
-    "order_test": "order",
-    "generate_document": "documentation",
-}
 
 # -----------------------------
 # Pydantic models
 # -----------------------------
 class Task(BaseModel):
-    id: str
-    title: str
-    type: str
-    description: Union[str, None] = None
+    title: str           # Human-readable title (from action name)
+    type: str 
+    prompt: str           # RAW action name from Heidi, e.g. "write_referral_letter"
+    description: Optional[str] = None  # AI agent output as text
+
 
 class GenerateRequest(BaseModel):
-    taskId: str
+    taskId: str | None = None   # <-- make optional
     taskType: str
     taskDetails: Any
 
+
 class ExecuteItem(BaseModel):
     taskId: str
-    taskType: str
+    taskType: str        # RAW action name
     content: Any
+
 
 class ExecuteBatchRequest(BaseModel):
     tasks: List[ExecuteItem]
     executedAt: str
 
+
 # -----------------------------
 # Helpers
 # -----------------------------
 def human_title(action_name: str) -> str:
+    """Turn 'write_referral_letter' into 'Write Referral Letter'."""
     return action_name.replace("_", " ").title()
 
-def clean_markdown_json(md_block: Any) -> str:
-    """
-    Accepts either:
-      - a raw JSON string
-      - a ```json fenced block
-      - or even a dict/list
 
-    Returns a JSON *string* we can json.loads.
+def clean_markdown_json(md_block: str) -> str:
     """
-    # If it's already a dict/list/etc., just dump to string
-    if not isinstance(md_block, str):
-        try:
-            return json.dumps(md_block)
-        except Exception:
-            return str(md_block)
+    Takes a string which might be:
 
+      ```json
+      { ... }
+      ```
+
+    or just raw JSON, and returns just the JSON part as a string.
+    """
     s = md_block.strip()
 
-    # Strip leading ```xxx
+    # Strip leading ```... line if present
     if s.startswith("```"):
         first_newline = s.find("\n")
         if first_newline != -1:
             s = s[first_newline + 1 :]
 
-    # Strip trailing ```
+    # Strip trailing ``` if present
     if s.endswith("```"):
         s = s[:-3]
 
     return s.strip()
 
-def build_tasks_from_valid_actions(valid_actions: list) -> List[Task]:
+
+def normalise_output_to_text(output: Any) -> str:
     """
-    valid_actions structure (from run_task_with_heidi):
-
-      [
-        ["write_referral_letter", "```json\n{...}\n```"],
-        ["generate_document", "```json\n{...}\n```"],
-        ...
-      ]
+    Convert Heidi's output (string, dict, list, etc.) to a readable text
+    for the Task.description field.
     """
-    tasks: List[Task] = []
+    # Already a string -> clean markdown fences
+    if isinstance(output, str):
+        return clean_markdown_json(output)[:500]
 
-    for idx, item in enumerate(valid_actions, start=1):
-        # Ensure each item looks like [action_name, output]
-        if not isinstance(item, (list, tuple)) or len(item) != 2:
-            continue
+    # Dict or list -> pretty JSON
+    try:
+        return json.dumps(output, indent=2)[:500]
+    except Exception:
+        return str(output)[:500]
 
-        action_name, output = item
-        action_name_str = str(action_name)
 
-        task_type = ACTION_TO_TASK_TYPE.get(action_name_str, "documentation")
+# def build_tasks_from_valid_actions(valid_actions: list) -> List[Task]:
+#     """
+#     valid_actions structure from run_task_with_heidi:
 
-        parsed = None
+#       [
+#         ["write_referral_letter", "```json\\n{...}\\n```"],
+#         ["generate_document",    "```json\\n{...}\\n```"],
+#         ...
+#       ]
 
-        # Try to normalise + parse the output as JSON
-        try:
-            if isinstance(output, dict):
-                parsed = output
-            else:
-                json_str = clean_markdown_json(output)
-                parsed = json.loads(json_str)
-        except Exception:
-            parsed = None
+#     We:
+#       - use the first element as both the raw type AND to build the title
+#       - use the second element (AI output) as description (textified).
+#     """
+#     tasks: List[Task] = []
 
-        # Try to find a nice human description
-        desc = None
-        if isinstance(parsed, dict):
-            desc = (
-                parsed.get("description")
-                or parsed.get("content")
-                or parsed.get("message")
-                or parsed.get("body")
-                or parsed.get("notes")
-            )
+#     for idx, item in enumerate(valid_actions, start=1):
+#         if not isinstance(item, (list, tuple)) or len(item) != 2:
+#             # Skip malformed entries
+#             continue
 
-        # Fallback: just use a truncated string version
-        if not desc:
-            try:
-                desc = str(output)[:200]
-            except Exception:
-                desc = "Task output available but could not be displayed."
+#         action_name, output = item
+#         action_name_str = str(action_name)
 
-        tasks.append(
-            Task(
-                id=f"task-{idx}",
-                title=human_title(action_name_str),
-                type=task_type,
-                description=desc,
-            )
-        )
+#         desc_text = normalise_output_to_text(output)
 
-    return tasks
+#         tasks.append(
+#             Task(
+#                 title=human_title(action_name_str),
+#                 type=action_name_str,      # <-- RAW action name, no mapping
+#                 prompt=
+#                 description=desc_text,
+#             )
+#         )
+
+#     return tasks
+
 
 # -----------------------------
 # Endpoints
 # -----------------------------
 @app.get("/api/patient")
 def get_patient():
+    # You can replace these with real values later
     return {
         "id": "patient-001",
         "name": "John Doe",
@@ -170,63 +147,98 @@ def get_patient():
         "sessionId": SESSION_ID,
     }
 
+
 @app.get("/api/tasks", response_model=List[Task])
 def list_tasks():
     """
     Call Heidi to get valid_actions, convert them into Task objects, and
     return a simple list that the frontend can render.
+
+    Each Task has:
+      - id: "task-1", "task-2", ...
+      - title: humanised action (e.g. "Write Referral Letter")
+      - type: RAW action name (e.g. "write_referral_letter")
+      - description: AI output as text
     """
     jwt_token = get_jwt_token()
     high_level_task = "Generate follow-up actions for this consultation"
-    print("HERE")
-    data = run_task_with_heidi(high_level_task, SESSION_ID, jwt_token)
 
-    # data should be: { "valid_actions": [...], "invalid_actions": [...] }
-    valid_actions = data.get("valid_actions", [])
+    data = get_actions_from_task(high_level_task)
+    valid_actions = data
 
-    tasks = build_tasks_from_valid_actions(valid_actions)
-    return tasks
+    return valid_actions
+
 
 @app.post("/api/tasks/generate")
 def generate_task_content(req: GenerateRequest):
-    if req.taskType == "documentation":
-        return {
-            "type": "Session Note",
-            "content": f"Generated session note for: {req.taskDetails['title']}"
-        }
-    
-    if req.taskType == "email":
-        return {
-            "type": "Email",
-            "content": f"Generated email for: {req.taskDetails['title']}"
-        }
+    """
+    Generate preview content for a specific task.
 
-    if req.taskType == "referrals":
+    req.taskType is the RAW action name from Heidi, e.g. "write_referral_letter".
+    We branch on substrings instead of using a separate mapping.
+    """
+    action = req.taskType
+
+    # Simple heuristics based on action name
+    action_lower = action.lower()
+
+    if "referral" in action_lower:
+        # Use your extract_from_session + find_nearby_doctors helper
         specialty, postcode = extract_from_session()
         doctors = find_nearby_doctors(specialty, postcode)
         return {
             "type": "Nearby Specialists",
-            "content": doctors
+            "content": doctors,
         }
 
+    if "email" in action_lower or "send" in action_lower:
+        return {
+            "type": "Email",
+            "content": f"Generated email for: {req.taskDetails.get('title', 'this task')}",
+        }
+
+    if "document" in action_lower or "note" in action_lower or "pamphlet" in action_lower:
+        return {
+            "type": "Document",
+            "content": f"Generated document for: {req.taskDetails.get('title', 'this task')}",
+        }
+
+    if "order" in action_lower or "test" in action_lower or "prescription" in action_lower:
+        return {
+            "type": "Order",
+            "content": f"Generated order for: {req.taskDetails.get('title', 'this task')}",
+        }
+
+    if "book" in action_lower or "appointment" in action_lower:
+        return {
+            "type": "Appointment",
+            "content": f"Generated appointment details for: {req.taskDetails.get('title', 'this task')}",
+        }
+
+    # Fallback generic preview
     return {
         "type": "Preview",
-        "content": f"Generated content for task type: {req.taskType}"
+        "content": f"Generated content for action: {action}",
     }
+
 
 @app.post("/api/tasks/execute-batch")
 def execute_tasks(req: ExecuteBatchRequest):
+    """
+    Execute a batch of approved tasks.
+
+    For now this just returns a simple status per task. You can later plug in
+    real email sending, EMR upload, etc.
+    """
     results = []
     for task in req.tasks:
         results.append({
             "taskId": task.taskId,
-            "status": f"Executed {task.taskType}"
+            "status": f"Executed {task.taskType}",
         })
 
     return {
         "status": "ok",
         "executedCount": len(req.tasks),
-        "results": results
+        "results": results,
     }
-
-
