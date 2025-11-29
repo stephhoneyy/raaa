@@ -284,7 +284,7 @@ export default function Tasks() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({s
+          body: JSON.stringify({
             tasks: [
               {
                 taskId: selectedTask.id,
