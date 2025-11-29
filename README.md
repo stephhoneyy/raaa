@@ -234,3 +234,5 @@ Project Link: [https://github.com/stephhoneyy/raaa](https://github.com/stephhone
 [Bootstrap-url]: https://getbootstrap.com
 [JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
 [JQuery-url]: https://jquery.com 
+# Required Packages
+pip install flask google-auth google-auth-oauthlib google-api-python-client reportlab
