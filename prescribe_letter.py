@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from task_to_action_parsing import decompose_task
-from secrets import (
+from heidi_secrets import (
     HEIDI_API_KEY,
     HEIDI_EMAIL,
     HEIDI_THIRD_PARTY_ID,

@@ -15,18 +15,25 @@ import os
 import textwrap
 import requests
 
+from heidi_secrets import (
+    HEIDI_API_KEY,
+    HEIDI_EMAIL,
+    HEIDI_THIRD_PARTY_ID,
+    DEFAULT_SESSION_ID,
+)
+
 BASE_URL = "https://registrar.api.heidihealth.com/api/v2/ml-scribe/open-api"
 
 # ---- CONFIG: FILL THESE IN ----
-HEIDI_API_KEY = os.environ.get("HEIDI_API_KEY", "HIztzs28cXhQ3m4rMKYylG77i0bC283U")
-EMAIL = os.environ.get("HEIDI_EMAIL", "cher.lyandar@gmail.com")
-THIRD_PARTY_ID = os.environ.get("HEIDI_THIRD_PARTY_ID", "1234")
+HEIDI_API_KEY = os.environ.get("HEIDI_API_KEY", HEIDI_API_KEY)
+EMAIL = os.environ.get("HEIDI_EMAIL", HEIDI_EMAIL)
+THIRD_PARTY_ID = os.environ.get("HEIDI_THIRD_PARTY_ID", HEIDI_THIRD_PARTY_ID)
 
 # From the browser URL:
 # https://scribe.heidihealth.com/scribe/session/3320...55160#...
 SESSION_ID = os.environ.get(
     "HEIDI_SESSION_ID",
-    "337851254565527952685384877024185083869"
+    DEFAULT_SESSION_ID
 )
 
 
