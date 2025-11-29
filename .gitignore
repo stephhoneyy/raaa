@@ -34,3 +34,4 @@ lerna-debug.log*
 client_secret.json
 __pycache__/
 
+heidi_secrets.py
