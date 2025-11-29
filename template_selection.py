@@ -318,9 +318,9 @@ def main():
 
     
 
-    mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
+    # mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
     mock_task_2 = "Refer patient to oncology unit to discuss chemotherapy"
-    mock_task_3 = "Schedule CT scan as soon as possible"
+    # mock_task_3 = "Schedule CT scan as soon as possible"
 
     from pprint import pprint
 
@@ -332,7 +332,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-## TODO: Work on the prompting of task to action to be less redundant.
-## TODO: MAYBE, I have to modify the final output action string to hold more parameters. (Low prio)
-## TODO: There seems to be some bug calling the script multiple times.

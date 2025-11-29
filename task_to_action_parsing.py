@@ -19,23 +19,22 @@ into an array of executable actions.
 
 Rules:
 1. Only use these action types: {action_types}
-2. For each action, use **exactly the arguments listed below**.
-   - generate_pamphlet: topic (required)
+2. For each action if chosen, use **exactly the arguments listed below**.
    - print_document: title (required), body (optional)
    - send_to_lab: specimen_type (required), test (required)
    - create_prescription: medication (required), dose (optional), instructions (optional)
-   - notify_patient: message (required)
    - write_referral_letter: to (required), purpose (required)
    - send_email: to (required), subject (required)
    - book_appointment: clinic (optional), date (required), reason (optional)
    - order_test: test_name (required)
-   - generate_document: title (required), content (required)
 
 IMPORTANT:
 - Output **exactly one JSON array** of objects.
 - Each object must have "action" and "args".
-- Do NOT include explanations, notes, or anything else.
+- Only 5 objects of "action" and "args" can be returned.
+- Do NOT include explanations, notes, or anything aside from these objects.
 - Do not invent new argument names.
+- Be strict with chosen action types, any action not explicitely mentioned should be carefully considered.
 - Example:
 [
   {{
@@ -48,10 +47,6 @@ Task: "{task}"
 """
 
 ACTION_PROMPTS = {
-    "generate_pamphlet": "Generate a patient pamphlet on {topic}. "\
-                         "The output should consider the context of the session it is being generated for. "\
-                         "Return a JSON object with the key: 'content'.",
-
     "print_document": "Print document titled {title}{body}. "\
                       "Consider the session context. "\
                       "Return a JSON object with keys: 'title', 'body'.",
@@ -63,10 +58,6 @@ ACTION_PROMPTS = {
     "create_prescription": "Create prescription of {medication}. "\
                            "Consider the session context. "\
                            "Return a JSON object with keys: 'medication', 'dose', 'instructions'.",
-
-    "notify_patient": "Notify patient: {message}. "\
-                      "Include session context. "\
-                      "Return a JSON object with key: 'message'.",
 
     "write_referral_letter": "Write referral letter to {to} for {purpose}. "\
                              "Consider the session context. "\
@@ -83,24 +74,17 @@ ACTION_PROMPTS = {
     "order_test": "Order test {test_name}. "\
                   "Include session context. "\
                   "Return a JSON object with keys: 'test_name', 'patient_id'.",
-
-    "generate_document": "Generate document titled {title} with content: {content}. "\
-                         "Consider session context. "\
-                         "Return a JSON object with keys: 'title', 'content'."
 }
 
 
 ACTION_SCHEMA = {
-    "generate_pamphlet": {"topic": True},  # required
     "print_document": {"title": True, "body": False},  # body optional
     "send_to_lab": {"specimen_type": True, "test": True},  # both required
     "create_prescription": {"medication": True, "dose": False, "instruction": False},  # only medication used in template
-    "notify_patient": {"message": True},  # required
     "write_referral_letter": {"to": True, "purpose": True},  # template uses recipient & specialty
     "send_email": {"to": True, "subject": True},  # matches template
     "book_appointment": {"clinic": True, "date": True, "reason": False},  # template uses clinic, date, reason
     "order_test": {"test_name": True},  # template uses test_name only
-    "generate_document": {"title": True, "content": True}  # matches template
 }
 
 
