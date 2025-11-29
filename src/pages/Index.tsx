@@ -60,7 +60,7 @@ interface Patient {
 // ============================================================================
 
 const USE_MOCK_DATA = false;
-const API_BASE = "http://localhost:8080";
+const API_BASE = "http://localhost:8000";
 
 function getIconForTaskType(type: string) {
   const lower = type.toLowerCase();
