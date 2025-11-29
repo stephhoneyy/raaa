@@ -328,7 +328,7 @@ def main():
     pprint(valid_instructions)
     data = run_task_with_heidi(mock_task_2, SESSION_ID, jwt_token)
     print("VALID")
-    pprint(data.get("valid_actions"))
+    print(data.get("valid_actions"))
     # print("INVALID")
     # pprint(data.get("invalid_actions"))
 
@@ -339,6 +339,6 @@ def main():
     pprint(valid_instructions)
     data = run_task_with_heidi(mock_task_4, "53587316790682971446935880515324100567", jwt_token)
     print("VALID")
-    pprint(data.get("valid_actions"))
+    print(data.get("valid_actions"))
 if __name__ == "__main__":
     main()
