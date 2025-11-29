@@ -60,7 +60,7 @@ interface Patient {
 // ============================================================================
 
 const USE_MOCK_DATA = false;
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8080";
 
 function getIconForTaskType(type: string) {
   const lower = type.toLowerCase();
@@ -284,7 +284,7 @@ export default function Tasks() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
+          body: JSON.stringify({s
             tasks: [
               {
                 taskId: selectedTask.id,
