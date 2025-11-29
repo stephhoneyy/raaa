@@ -8,7 +8,6 @@ from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 import base64
 
-
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus.flowables import Flowable
@@ -75,12 +74,17 @@ def send_email():
     if creds is None:
         return "No credentials — click Connect Gmail first."
 
-    to = request.form.get("to")
-    subject = request.form.get("subject")
-    message_text = request.form.get("message")
+    data = request.json
+    if not data:
+        return "Expected JSON body.", 400
 
-    if not to or not subject or not message_text:
-        return "Missing fields."
+    to = data.get("recipient")
+    subject = data.get("subject_line")
+    content_text = data.get("content")
+    pdf_body_text = data.get("body")
+
+    if not to or not subject or not content_text or not pdf_body_text:
+        return "Missing one or more required fields.", 400
 
     # Build Gmail service
     service = build("gmail", "v1", credentials=creds)
@@ -91,22 +95,14 @@ def send_email():
     message["subject"] = subject
 
     # Add email body
-    message.attach(MIMEText(message_text, "plain"))
+    message.attach(MIMEText(content_text, "plain"))
 
-
-    jwt_token = get_jwt_token()
-    session_id = 75033324869996810677299265415934259470
-
-
-    # Generate PDF bytes in `memory`
-    transcript_data = get_transcript(jwt_token, session_id)
-    transcript_text = transcript_data.get("transcript") or transcript_data.get("data")
-    pdf_bytes = create_pdf_bytes(transcript_text)
-
+    # Generate PDF bytes with the text in "body"
+    pdf_bytes = create_pdf_bytes(pdf_body_text)
 
     # Attach PDF
     pdf_part = MIMEApplication(pdf_bytes, _subtype="pdf")
-    pdf_part.add_header("Content-Disposition", "attachment", filename="referral_letter.pdf")
+    pdf_part.add_header("Content-Disposition", "attachment", filename="attachment.pdf")
     message.attach(pdf_part)
 
     # Encode message for Gmail API
@@ -117,7 +113,8 @@ def send_email():
         body={"raw": encoded_message}
     ).execute()
 
-    return "Email sent successfully with PDF attachment!"
+    return "Email sent successfully!"
+
 
 if __name__ == "__main__":
     app.run(port=8000, debug=True)
