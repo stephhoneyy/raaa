@@ -6,7 +6,8 @@ client = Groq(api_key=test_key)
 
 def ask_llm(prompt):
     chat = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        # model="llama-3.1-8b-instant",
+        model="groq/compound",
         messages=[{"role": "user", 
                    "content": prompt}]
     )

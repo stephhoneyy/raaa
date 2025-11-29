@@ -83,7 +83,6 @@ def get_session(jwt_token, session_id):
 
     return resp.json()
 
-
 def get_transcript(jwt_token, session_id):
     """
     GET /sessions/{session_id}/transcript
@@ -313,22 +312,33 @@ def main():
     print(f"Name       : {session.get('session_name')}")
     print(f"Created at : {session.get('created_at')}")
     patient = session.get("patient") or {}
-    print(f"Patient    : {patient.get('name')}  (DOB: {patient.get('dob')})")
+    # print(f"Patient    : {patient.get('name')}  (DOB: {patient.get('dob')})")
 
 
     
+
+    from pprint import pprint
+    from task_to_action_parsing import process_task
 
     # mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
     mock_task_2 = "Refer patient to oncology unit to discuss chemotherapy"
     # mock_task_3 = "Schedule CT scan as soon as possible"
 
-    from pprint import pprint
-
-    data = run_task_with_heidi(mock_task_2, SESSION_ID, jwt_token)
+    valid_instructions, invalid_actions = process_task(mock_task_2)
+    pprint(valid_instructions)
+    data = run_task_with_heidi(mock_task_2, "53587316790682971446935880515324100567", jwt_token)
     print("VALID")
     pprint(data.get("valid_actions"))
-    print("INVALID")
-    pprint(data.get("invalid_actions"))
+    # print("INVALID")
+    # pprint(data.get("invalid_actions"))
 
+    # print(get_transcript(jwt_token, "53587316790682971446935880515324100567"))
+    
+    mock_task_4 = "Give patient prescription for Amoxicillin"
+    valid_instructions, invalid_actions = process_task(mock_task_4)
+    pprint(valid_instructions)
+    data = run_task_with_heidi(mock_task_4, "53587316790682971446935880515324100567", jwt_token)
+    print("VALID")
+    pprint(data.get("valid_actions"))
 if __name__ == "__main__":
     main()
