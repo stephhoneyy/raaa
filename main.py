@@ -242,19 +242,24 @@
 #         "executedCount": len(req.tasks),
 #         "results": results,
 #     }
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Any, Dict
 
+import re
+import json
+
 # import your Heidi helper functions
 from template_selection import (
     get_jwt_token,
-    SESSION_ID,         # or define here if you prefer
+    SESSION_ID,         # current session id
     get_actions_from_task,
     get_data_of_action,
 )
+
+# import the prescription letter generator
+from prescribe_letter import generate_prescription_letter_for_session
 
 app = FastAPI()
 
@@ -266,8 +271,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-import re
-import json
 
 def quick_clean(md: str) -> str:
     """Remove markdown + escape characters quickly and safely."""
@@ -300,7 +303,6 @@ def quick_clean(md: str) -> str:
     return s.strip()
 
 
-
 # -------------------------------------------------------------------
 # MODELS to match your frontend
 # -------------------------------------------------------------------
@@ -311,7 +313,7 @@ class ApiTask(BaseModel):
     prompt: str
 
 class GenerateRequest(BaseModel):
-    taskType: str          # e.g. "send_email", "write_referral_letter"
+    taskType: str          # e.g. "send_email", "write_referral_letter", "create_prescription"
     taskDetails: Dict[str, Any]  # the Task object from the frontend
 
 class ExecuteItem(BaseModel):
@@ -322,19 +324,24 @@ class ExecuteBatchRequest(BaseModel):
     tasks: List[ExecuteItem]
     executedAt: str
 
+
 # -------------------------------------------------------------------
-# PATIENT ENDPOINT (unchanged, just something simple)
+# PATIENT ENDPOINT
 # -------------------------------------------------------------------
 
 @app.get("/api/patient")
 def get_patient():
-    # You can fetch this from Heidi if you want; keeping it static for now
+    """
+    Simple patient info for the header.
+    You can wire this to Heidi if you prefer; currently just static+SESSION_ID.
+    """
     return {
         "id": "patient-001",
         "name": "John Doe",
         "dateOfBirth": "1980-03-15",
         "sessionId": SESSION_ID,
     }
+
 
 # -------------------------------------------------------------------
 # TASK LIST: use get_actions_from_task
@@ -354,11 +361,11 @@ def list_tasks():
     actions = get_actions_from_task(high_level_task)
     # actions is already a list of dicts: { "title", "type", "prompt" }
 
-    # Just return them directly – they match ApiTask
     return actions
 
+
 # -------------------------------------------------------------------
-# GENERATE CONTENT FOR A SINGLE TASK: use get_data_of_action
+# GENERATE CONTENT FOR A SINGLE TASK
 # -------------------------------------------------------------------
 
 @app.post("/api/tasks/generate")
@@ -371,7 +378,20 @@ def generate_task_content(req: GenerateRequest):
         "type": "<some label>",
         "content": "<markdown or text from Heidi>"
     }
+
+    If the taskType is "create_prescription", we instead generate a
+    prescribing-style letter via prescribe_letter.generate_prescription_letter_for_session.
     """
+    # Special case: prescription letter generation
+    if req.taskType == "create_prescription":
+        result = generate_prescription_letter_for_session(SESSION_ID)
+        # Return just the letter text so the frontend can display/edit it
+        return {
+            "type": "Prescription Letter",
+            "content": result["letter"],
+        }
+
+    # --------- existing behaviour for other task types ---------
     jwt_token = get_jwt_token()
 
     # Build the "action" dict expected by get_data_of_action
@@ -381,7 +401,7 @@ def generate_task_content(req: GenerateRequest):
         "prompt": req.taskDetails.get("prompt"),
     }
 
-    raw = get_data_of_action(action, SESSION_ID, jwt_token) # <-- markdown OR JSON string
+    raw = get_data_of_action(action, SESSION_ID, jwt_token)  # markdown OR JSON string
 
     # STEP 1 — Try to parse the content as JSON
     content = str(raw)
@@ -389,8 +409,9 @@ def generate_task_content(req: GenerateRequest):
         parsed = json.loads(raw)
         if isinstance(parsed, dict) and "content" in parsed:
             content = parsed["content"]
-    except Exception:   
-        pass  # not JSON, treat as markdown
+    except Exception:
+        # not JSON, treat as markdown
+        pass
 
     # STEP 2 — Clean markdown into plain text
     if isinstance(content, str):
@@ -400,6 +421,7 @@ def generate_task_content(req: GenerateRequest):
         "type": action["type"],
         "content": quick_clean(content),
     }
+
 
 # -------------------------------------------------------------------
 # EXECUTE TASKS (you can wire this later to actually do things)

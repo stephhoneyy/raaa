@@ -12,7 +12,6 @@ Dose and instructions are OPTIONAL:
 """
 
 import os
-import json
 import textwrap
 from datetime import date
 from typing import Any, Dict, List, Optional
@@ -67,7 +66,7 @@ MAX_PRESCRIPTIONS = 5
 
 def get_jwt_token() -> str:
     if not HEIDI_API_KEY or HEIDI_API_KEY == "YOUR_REAL_HEIDI_API_KEY":
-        raise RuntimeError("Please set HEIDI_API_KEY in secrets.py or .env")
+        raise RuntimeError("Please set HEIDI_API_KEY in heidi_secrets.py or env vars.")
     params = {"email": EMAIL, "third_party_internal_id": THIRD_PARTY_ID}
     headers = {"Heidi-Api-Key": HEIDI_API_KEY}
     resp = requests.get(f"{BASE_URL}/jwt", params=params, headers=headers, timeout=30)
@@ -267,8 +266,7 @@ def build_prescribing_letter(
     else:
         lines: List[str] = []
         for idx, m in enumerate(medications, start=1):
-            name = m.get("name", "[name]"
-            )
+            name = m.get("name", "[name]")
             strength = m.get("strength", "")
             form = m.get("form", "")
             line1 = " ".join(part for part in [name, strength, form] if part)
@@ -328,15 +326,24 @@ def build_prescribing_letter(
     return "\n".join(out)
 
 
-# ================== MAIN ==================
+# ================== PUBLIC HELPER FOR FASTAPI ==================
 
 
-def main() -> None:
-    print("=== Heidi Prescription Letter Generator ===")
+def generate_prescription_letter_for_session(session_id: str) -> Dict[str, Any]:
+    """
+    High-level helper to:
+    - fetch Heidi session + transcript
+    - run the LLM pipeline
+    - build the prescribing-style letter
 
-    # 1. Heidi: session + transcript
+    Returns a dict with:
+      - letter: full text of the letter
+      - patient: normalised patient dict
+      - medications: list of medication dicts
+      - session_id: the session used
+    """
     jwt_token = get_jwt_token()
-    session_data = get_session(jwt_token, SESSION_ID)
+    session_data = get_session(jwt_token, session_id)
     session = session_data.get("session", session_data)
 
     raw_patient = session.get("patient") or {}
@@ -346,24 +353,10 @@ def main() -> None:
     consult_note = session.get("consult_note") or {}
     consult_text = consult_note.get("result") or ""
 
-    transcript_data = get_transcript(jwt_token, SESSION_ID)
+    transcript_data = get_transcript(jwt_token, session_id)
     transcript_text = transcript_data.get("transcript") or transcript_data.get("data") or ""
 
-    # Debug summary
-    print("\n--- Session summary ---")
-    print(f"Session ID : {session.get('session_id')}")
-    print(f"Session name : {session.get('session_name')}")
-    print(f"Patient    : {patient.get('name')}  (DOB: {patient.get('dob')})")
-
-    if consult_text:
-        print("\n--- Consult note (first 200 chars) ---")
-        print(textwrap.shorten(consult_text, width=500, placeholder=" ... [truncated]"))
-
-    if transcript_text:
-        print("\n--- Transcript (first 200 chars) ---")
-        print(textwrap.shorten(transcript_text, width=500, placeholder=" ... [truncated]"))
-
-    # 2. Build context for LLM
+    # Build context for LLM
     context_pieces = []
     if consult_text:
         context_pieces.append("Consult note:\n" + consult_text)
@@ -371,13 +364,11 @@ def main() -> None:
         context_pieces.append("Transcript excerpt:\n" + transcript_text[:2000])
     session_context = "\n\n".join(context_pieces) or "No additional context."
 
-    # 3. Single LLM call via decompose_task → prescriptions
-    print("\n--- Calling Groq (via task_to_action_parsing) to create prescription actions ---")
+    # LLM → prescriptions
     prescription_objs = get_prescriptions_from_llm(TASK_STRING, session_context)
-
     medications = [map_prescription_to_med_item(p) for p in prescription_objs]
 
-    # 4. Build letter
+    # Letter text
     letter_text = build_prescribing_letter(
         patient=patient,
         prescriber=PRESCRIBER_INFO,
@@ -385,8 +376,29 @@ def main() -> None:
         medications=medications,
     )
 
+    return {
+        "letter": letter_text,
+        "patient": patient,
+        "medications": medications,
+        "session_id": session_id,
+    }
+
+
+# ================== CLI ENTRYPOINT (for local testing) ==================
+
+
+def main() -> None:
+    print("=== Heidi Prescription Letter Generator ===")
+
+    result = generate_prescription_letter_for_session(SESSION_ID)
+    patient = result["patient"]
+
+    print("\n--- Session summary ---")
+    print(f"Session ID : {result['session_id']}")
+    print(f"Patient    : {patient.get('name')}  (DOB: {patient.get('dob')})")
+
     print("\n--- Prescribing-style letter ---\n")
-    print(letter_text)
+    print(result["letter"])
     print("\n=== Done ===")
 
 

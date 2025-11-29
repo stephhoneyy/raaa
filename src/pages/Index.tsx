@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText,
   Mail,
@@ -320,7 +320,7 @@ export default function Tasks() {
       toast({
         title: "Task Executed",
         description: "Task has been successfully executed.",
-        duration: 2000, 
+        duration: 2000,
       });
     } catch (error) {
       console.error("Error executing task:", error);
@@ -365,7 +365,7 @@ export default function Tasks() {
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-semibold text-foreground">
-                Heidle
+                shtebba task manager RAAWWRR
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {totalTasksCount} tasks pending
