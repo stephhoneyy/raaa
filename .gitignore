@@ -1,4 +1,5 @@
 # Python
+config.py
 config.cpython-313
 __pycache__/
 
@@ -31,4 +32,4 @@ lerna-debug.log*
 *.sw?
 client_secret.json
 __pycache__/
-config.py
+
