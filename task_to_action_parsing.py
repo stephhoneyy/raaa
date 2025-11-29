@@ -23,7 +23,7 @@ Rules:
    - generate_pamphlet: topic (required)
    - print_document: title (required), body (optional)
    - send_to_lab: specimen_type (required), test (required)
-   - create_prescription: medication (required)
+   - create_prescription: medication (required), dose (optional), instructions (optional)
    - notify_patient: message (required)
    - write_referral_letter: to (required), purpose (required)
    - send_email: to (required), subject (required)
@@ -94,7 +94,7 @@ ACTION_SCHEMA = {
     "generate_pamphlet": {"topic": True},  # required
     "print_document": {"title": True, "body": False},  # body optional
     "send_to_lab": {"specimen_type": True, "test": True},  # both required
-    "create_prescription": {"medication": True},  # only medication used in template
+    "create_prescription": {"medication": True, "dose": False, "instruction": False},  # only medication used in template
     "notify_patient": {"message": True},  # required
     "write_referral_letter": {"to": True, "purpose": True},  # template uses recipient & specialty
     "send_email": {"to": True, "subject": True},  # matches template
