@@ -48,11 +48,11 @@ Task: "{task}"
 """
 
 ACTION_PROMPTS = {
-    "print_document": "Print document titled {title}{body}. "\
+    "print_document": "Make template to Print document titled {title}{body}. "\
                       "Consider the session context. "\
                       "Return a JSON object with keys: 'title', 'body'.",
 
-    "send_to_lab": "Send {specimen_type} to lab for {test}. "\
+    "send_to_lab": "Make template to Send {specimen_type} to lab for {test}. "\
                    "Include session context. "\
                    "Return a JSON object with keys: 'specimen_type', 'test'.",
 
@@ -60,19 +60,19 @@ ACTION_PROMPTS = {
                            "Consider the session context. "\
                            "Return a JSON object with keys: 'medication', 'dose', 'instructions'.",
 
-    "write_referral_letter": "Write referral letter to {to} for {purpose}. "\
-                             "Consider the session context. "\
+    "write_referral_letter": "Write a referral letter template to {to} for {purpose}. "\
+                            "Consider the session context. "\
                              "Return a JSON object with keys: 'recipient', 'purpose', 'notes'.",
 
     "send_email": "Send email to {to} considering the subject of {subject}. "\
                   "Consider session context. "\
                   "Return a JSON object with keys: 'subject_line', 'body'.",
 
-    "book_appointment": "Book appointment with {clinic}, {date} for {reason}. "\
+    "book_appointment": "Make a Book appointment template with {clinic}, {date} for {reason}. "\
                         "Consider session context. "\
                         "Return a JSON object with keys: 'clinic', 'date', 'reason'.",
 
-    "order_test": "Order test {test_name}. "\
+    "order_test": "Make a Order test {test_name} template. "\
                   "Include session context. "\
                   "Return a JSON object with keys: 'test_name', 'patient_id'.",
 }
