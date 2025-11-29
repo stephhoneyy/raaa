@@ -259,7 +259,7 @@ def run_task_with_heidi(task: str, session_id: str, jwt_token: str):
 
     Returns:
         dict: {
-            "valid_actions": [ [action_type, list of JSON outputs from Heidi] ],
+            "valid_actions": [ [action_type, list JSON outputs from Heidi] ],
             "invalid_actions": list[{"action": {...}, "issues": [...]}]
         }
 
@@ -284,13 +284,56 @@ def run_task_with_heidi(task: str, session_id: str, jwt_token: str):
         )
         print("OUTPUT")
         print(output_json)
-        heidi_outputs.append([action_name, output_json])
+        title = action_prompt.split(".", 1)[0].strip()
+        heidi_outputs.append({
+            "title": title,
+            "type": action_name,
+            "data": output_json
+        })
+        print({
+            "title": title,
+            "type": action_name,
+            "data": output_json
+        })
 
     return {
         "valid_actions": heidi_outputs,
         "invalid_actions": invalid_actions
     }
 
+class Action():
+    def __init__(self, title, type, prompt):
+        self.title = title
+        self.type = type
+        self.prompt = prompt
+
+def get_actions_from_task(task: str) -> list[Action]:
+    from task_to_action_parsing import process_task
+    valid_instructions, invalid_actions = process_task(task)
+
+    res = []
+
+    for action in valid_instructions:
+        action_name = action[0]
+        action_prompt = action[1]
+        action_title = action_prompt.split(".", 1)[0].strip()
+        # a_class = Action(action_title, action_name, action_prompt)
+        res.append({
+            "title": action_title,
+            "type": action_name,
+            "prompt": action_prompt
+        })
+
+    return res
+
+def get_data_of_action(action: dict, session_id: str, jwt_token: str):
+    data = ask_heidi(
+        jwt_token,
+        session_id,
+        command_text=action.get("prompt", None),
+        content=""  # empty content
+    )
+    return data
 
 
 def main():
@@ -314,23 +357,20 @@ def main():
     patient = session.get("patient") or {}
     # print(f"Patient    : {patient.get('name')}  (DOB: {patient.get('dob')})")
 
-
+    from task_to_action_parsing import process_task
     
 
-    from pprint import pprint
-    from task_to_action_parsing import process_task
-
-    # mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
+    mock_task_1 = "Arrange staging CT scan to determine extent of cancer"
     mock_task_2 = "Refer patient to oncology unit to discuss chemotherapy"
-    # mock_task_3 = "Schedule CT scan as soon as possible"
+    mock_task_3 = "Schedule CT scan as soon as possible"
 
-    valid_instructions, invalid_actions = process_task(mock_task_2)
-    pprint(valid_instructions)
+    from pprint import pprint
+
     data = run_task_with_heidi(mock_task_2, SESSION_ID, jwt_token)
     print("VALID")
-    print(data.get("valid_actions"))
-    # print("INVALID")
-    # pprint(data.get("invalid_actions"))
+    pprint(data.get("valid_actions"))
+    print("INVALID")
+    pprint(data.get("invalid_actions"))
 
     # print(get_transcript(jwt_token, "53587316790682971446935880515324100567"))
     
