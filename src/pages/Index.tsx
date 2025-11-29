@@ -365,7 +365,7 @@ export default function Tasks() {
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-semibold text-foreground">
-                Heidle
+                shtebba task manager RAAWWRR
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {totalTasksCount} tasks pending
