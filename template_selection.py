@@ -260,7 +260,7 @@ def run_task_with_heidi(task: str, session_id: str, jwt_token: str):
 
     Returns:
         dict: {
-            "valid_actions": [ [action_type, list  JSON outputs from Heidi] ],
+            "valid_actions": [ [action_type, list JSON outputs from Heidi] ],
             "invalid_actions": list[{"action": {...}, "issues": [...]}]
         }
 
@@ -285,13 +285,56 @@ def run_task_with_heidi(task: str, session_id: str, jwt_token: str):
         )
         print("OUTPUT")
         print(output_json)
-        heidi_outputs.append([action_name, output_json])
+        title = action_prompt.split(".", 1)[0].strip()
+        heidi_outputs.append({
+            "title": title,
+            "type": action_name,
+            "data": output_json
+        })
+        print({
+            "title": title,
+            "type": action_name,
+            "data": output_json
+        })
 
     return {
         "valid_actions": heidi_outputs,
         "invalid_actions": invalid_actions
     }
 
+class Action():
+    def __init__(self, title, type, prompt):
+        self.title = title
+        self.type = type
+        self.prompt = prompt
+
+def get_actions_from_task(task: str) -> list[Action]:
+    from task_to_action_parsing import process_task
+    valid_instructions, invalid_actions = process_task(task)
+
+    res = []
+
+    for action in valid_instructions:
+        action_name = action[0]
+        action_prompt = action[1]
+        action_title = action_prompt.split(".", 1)[0].strip()
+        # a_class = Action(action_title, action_name, action_prompt)
+        res.append({
+            "title": action_title,
+            "type": action_name,
+            "prompt": action_prompt
+        })
+
+    return res
+
+def get_data_of_action(action: dict, session_id: str, jwt_token: str):
+    data = ask_heidi(
+        jwt_token,
+        session_id,
+        command_text=action.get("prompt", None),
+        content=""  # empty content
+    )
+    return data
 
 
 def main():
