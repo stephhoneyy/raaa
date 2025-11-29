@@ -22,8 +22,10 @@ import json
 
 BASE_URL = "https://registrar.api.heidihealth.com/api/v2/ml-scribe/open-api"
 
+from heidi_secrets import HEIDI_API_KEY
+
 # ---- CONFIG: FILL THESE IN ----
-HEIDI_API_KEY = os.environ.get("HEIDI_API_KEY", "HIztzs28cXhQ3m4rMKYylG77i0bC283U")
+HEIDI_API_KEY = os.environ.get("HEIDI_API_KEY", HEIDI_API_KEY)
 EMAIL = os.environ.get("HEIDI_EMAIL", "ferdinantodaniel@gmail.com")
 THIRD_PARTY_ID = os.environ.get("HEIDI_THIRD_PARTY_ID", "12345")
 
