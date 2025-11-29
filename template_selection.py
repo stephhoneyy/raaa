@@ -326,7 +326,7 @@ def main():
 
     valid_instructions, invalid_actions = process_task(mock_task_2)
     pprint(valid_instructions)
-    data = run_task_with_heidi(mock_task_2, "53587316790682971446935880515324100567", jwt_token)
+    data = run_task_with_heidi(mock_task_2, SESSION_ID, jwt_token)
     print("VALID")
     pprint(data.get("valid_actions"))
     # print("INVALID")

@@ -6,8 +6,8 @@ client = Groq(api_key=test_key)
 
 def ask_llm(prompt):
     chat = client.chat.completions.create(
-        # model="llama-3.1-8b-instant",
-        model="groq/compound",
+        model="llama-3.1-8b-instant",
+        # model="groq/compound",
         messages=[{"role": "user", 
                    "content": prompt}]
     )
@@ -27,7 +27,6 @@ Rules:
    - write_referral_letter: to (required), purpose (required)
    - send_email: to (required), subject (required)
    - book_appointment: clinic (optional), date (required), reason (optional)
-   - order_test: test_name (required)
 
 IMPORTANT:
 - Output **exactly one JSON array** of objects.
@@ -60,7 +59,7 @@ ACTION_PROMPTS = {
                            "Consider the session context. "\
                            "Return a JSON object with keys: 'medication', 'dose', 'instructions'.",
 
-    "write_referral_letter": "Write a referral letter template to {to} for {purpose}. "\
+    "write_referral_letter": "Write a template for a referral letter to {to} for {purpose}. "\
                             "Consider the session context. "\
                              "Return a JSON object with keys: 'recipient', 'purpose', 'notes'.",
 
@@ -71,10 +70,6 @@ ACTION_PROMPTS = {
     "book_appointment": "Make a Book appointment template with {clinic}, {date} for {reason}. "\
                         "Consider session context. "\
                         "Return a JSON object with keys: 'clinic', 'date', 'reason'.",
-
-    "order_test": "Make a Order test {test_name} template. "\
-                  "Include session context. "\
-                  "Return a JSON object with keys: 'test_name', 'patient_id'.",
 }
 
 
@@ -85,7 +80,6 @@ ACTION_SCHEMA = {
     "write_referral_letter": {"to": True, "purpose": True},  # template uses recipient & specialty
     "send_email": {"to": True, "subject": True},  # matches template
     "book_appointment": {"clinic": True, "date": True, "reason": False},  # template uses clinic, date, reason
-    "order_test": {"test_name": True},  # template uses test_name only
 }
 
 
